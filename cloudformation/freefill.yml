@@ -1,5 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Create S3 bucket"
+Description: "Creates stack for Freefill.
+  Complete:
+    S3
+    IAM
+  TODO:
+    CloudFront
+    API Gateway"
 
 Parameters:
   BucketName:
@@ -17,10 +23,80 @@ Resources:
       WebsiteConfiguration:
         IndexDocument: "index.html"
 
+  IAMPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "IAM policy for S3 access"
+      Roles:
+        # these must match the roles created by Serverless
+        - Freefill-dev-us-east-1-lambdaRole
+        - Freefill-prod-us-east-1-lambdaRole
+      PolicyDocument: '{
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "VisualEditor0",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:ListBucketByTags",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketTagging",
+                    "s3:GetInventoryConfiguration",
+                    "s3:GetObjectVersionTagging",
+                    "s3:ListBucketVersions",
+                    "s3:GetBucketLogging",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketPolicy",
+                    "s3:GetObjectVersionTorrent",
+                    "s3:GetObjectAcl",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetObjectVersionAcl",
+                    "s3:GetObjectTagging",
+                    "s3:GetMetricsConfiguration",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketPolicyStatus",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:GetBucketWebsite",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetBucketNotification",
+                    "s3:GetReplicationConfiguration",
+                    "s3:ListMultipartUploadParts",
+                    "s3:GetObject",
+                    "s3:GetObjectTorrent",
+                    "s3:GetBucketCORS",
+                    "s3:GetAnalyticsConfiguration",
+                    "s3:GetObjectVersionForReplication",
+                    "s3:GetBucketLocation",
+                    "s3:GetObjectVersion"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::freefill-dev",
+                    "arn:aws:s3:::*/*"
+                ]
+            },
+            {
+                "Sid": "VisualEditor1",
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutAccountPublicAccessBlock",
+                    "s3:GetAccountPublicAccessBlock",
+                    "s3:ListAllMyBuckets",
+                    "s3:HeadBucket"
+                ],
+                "Resource": "*"
+            }
+        ]
+    }'
+
 Outputs:
   BucketName:
     Value: !Ref "S3Bucket"
-    Description: "Name of bucket"
+    Description: "Name of bucket created"
   BucketURL:
     Value: !Join ["", ["https://", !GetAtt [S3Bucket, DomainName]]]
-    Description: "URL of bucket"
+    Description: "URL of bucket created"
+  IAMPolicy:
+    Value: !Ref "IAMPolicy"
+    Description: "Name of IAM policy created"
