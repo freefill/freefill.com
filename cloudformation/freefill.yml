@@ -1,37 +1,50 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Creates stack for Freefill.
-  Complete:
-    S3
-    IAM
-  TODO:
-    CloudFront
-    API Gateway"
+Description: "Creates resources for Freefill.com: S3, IAM, API Gateway, CloudFront w/ custom domain name"
 
 Parameters:
+  StageName:
+    Description: Choose the API Gateway stage
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    ConstraintDescription: Must be a valid API Gateway stage name
+
   BucketName:
     Type: String
-    Description: "Name of bucket"
+    Description: Enter the name of the S3 bucket
+
+  LambdaName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-_]+[a-zA-Z0-9]+$"
+    Description: Enter the name of the Lambda function
+
+  ACMCertIdentifier:
+    Type: String
+    AllowedPattern: "^[-a-z0-9]+$"
+    Description: Enter the ACM certificate idenfitier
 
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: PublicRead
-      BucketName: !Ref "BucketName"
+      BucketName: !Ref BucketName
       MetricsConfigurations:
-        - Id: "EntireBucket" # "EntireBucket" is the default ID used by the AWS Console when enabling bucket-level metrics.
+        - Id: EntireBucket # EntireBucket is the default ID used by the AWS Console when enabling bucket-level metrics.
       WebsiteConfiguration:
-        IndexDocument: "index.html"
+        IndexDocument: index.html
 
   IAMPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: "IAM policy for S3 access"
+      Description: IAM policy for S3 access
       Roles:
         # these must match the roles created by Serverless
-        - Freefill-dev-us-east-1-lambdaRole
-        - Freefill-prod-us-east-1-lambdaRole
-      PolicyDocument: '{
+        - freefill-serverless-dev-us-east-1-lambdaRole
+#        - freefill-serverless-prod-us-east-1-lambdaRole
+      PolicyDocument: !Sub '{
         "Version": "2012-10-17",
         "Statement": [
             {
@@ -72,7 +85,7 @@ Resources:
                     "s3:GetObjectVersion"
                 ],
                 "Resource": [
-                    "arn:aws:s3:::freefill-dev",
+                    "arn:aws:s3:::${BucketName}",
                     "arn:aws:s3:::*/*"
                 ]
             },
@@ -90,13 +103,108 @@ Resources:
         ]
     }'
 
+  APIGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: !Join ["", ["freefill-", !Ref StageName]]
+      Description: Freefill.com
+      EndpointConfiguration:
+          Types:
+            - REGIONAL
+
+  APIGatewayMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST # not GET as HttpMethod might suggest
+        IntegrationResponses:
+        - StatusCode: "200"
+          ResponseTemplates:
+            text/html: |
+              #set($inputRoot = $input.path('$'))
+              $inputRoot.body
+        Type: AWS
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaName}"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseModels:
+            text/html: Empty
+      ResourceId: !GetAtt APIGateway.RootResourceId
+      RestApiId: !Ref APIGateway
+
+  APIGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      CertificateArn: !Sub "arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/${ACMCertIdentifier}"
+      DomainName: !Join ["", [!Ref StageName, ".freefill.com"]]
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+  APIGatewayBasePathMapping:
+    Type: 'AWS::ApiGateway::BasePathMapping'
+    Properties:
+#      BasePath: / # omitting BasePath results in BasePath:/
+      DomainName: !Join ["", [!Ref StageName, ".freefill.com"]]
+      RestApiId: !Ref APIGateway
+      Stage: !Ref StageName
+
+  APIGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - APIGatewayMethod
+    Properties:
+      RestApiId: !Ref APIGateway
+      StageName: !Ref StageName
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: S3 Configuration
+        Parameters:
+          - BucketName
+      - Label:
+          default: API Gateway Configuration
+        Parameters:
+          - StageName
+          - ACMCertIdentifier
+      - Label:
+          default: Lambda Configuration
+        Parameters:
+          - LambdaName
+    ParameterLabels:
+      BucketName:
+        default: "What should the S3 bucket be called?"
+      StageName:
+        default: "Should this API be deployed to development (dev) or production (prod)?"
+      ACMCertIdentifier:
+        default: "What ACM idenfitier should be used with the CloudFront distribution custom domain name?"
+      LambdaName:
+        default: "What is the name of the Lambda function created by Serverless?"
+
 Outputs:
   BucketName:
-    Value: !Ref "S3Bucket"
-    Description: "Name of bucket created"
+    Value: !Ref S3Bucket
+    Description: Name of bucket created
   BucketURL:
     Value: !Join ["", ["https://", !GetAtt [S3Bucket, DomainName]]]
-    Description: "URL of bucket created"
+    Description: URL of bucket created
   IAMPolicy:
-    Value: !Ref "IAMPolicy"
-    Description: "Name of IAM policy created"
+    Value: !Ref IAMPolicy
+    Description: Name of IAM policy created
+  LambdaName:
+    Value: !Ref LambdaName
+    Description: Name of Lambda function created
+  APIGatewayMethod:
+    Value: !Ref APIGatewayMethod
+    Description: Name of API Gateway created
+  DistributionDomainName:
+    Value: !GetAtt
+      - APIGatewayDomainName
+      - DistributionDomainName
+    Description: Name of CloudFront distribution created

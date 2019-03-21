@@ -11,7 +11,7 @@
 #
 # Happy Coding!
 
-service: Freefill # NOTE: update this with your service name
+service: freefill-serverless # NOTE: update this with your service name
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
@@ -22,9 +22,12 @@ provider:
   runtime: python3.7
   profile: serverless-admin
   region: us-east-1
-  stage: prod
-  iamManagedPolicies:
-    - "arn:aws:iam::916352733218:policy/Freefill-S3-Policy"
+#  stage: prod
+  stage: dev
+
+# No longer needed - now handled automatically by CloudFormation template
+#  iamManagedPolicies:
+#    - "arn:aws:iam::916352733218:policy/Freefill-S3-Policy"
 
 # you can overwrite defaults here
 #  stage: dev
@@ -66,7 +69,7 @@ functions:
 #    handler: freefill.print_phil
 #  print_logo:
 #    handler: freefill.print_logo
-    awsKmsKeyArn: "arn:aws:kms:us-east-1:916352733218:key/b205c991-091f-41e0-9aa2-283fef5bf396"
+#    awsKmsKeyArn: "arn:aws:kms:us-east-1:916352733218:key/b205c991-091f-41e0-9aa2-283fef5bf396"
     environment:
       S3_BUCKET: "freefill"
 
