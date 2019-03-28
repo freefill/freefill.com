@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Provisions IAM users and groups"
+
+Parameters:
+  GroupName:
+    Description: Enter the group name
+    Type: String
+
+  UserName:
+    Type: String
+    Description: Enter the user name
+
+  Password:
+    Type: String
+    Description: Enter the password
+    NoEcho: True
+
+Resources:
+  IAMGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Ref GroupName # don't forget about CAPABILITY_NAMED_IAM in the CLI command
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  IAMUser:
+    Type: AWS::IAM::User
+    DependsOn: IAMGroup
+    Properties:
+      LoginProfile:
+        Password: !Ref Password
+        PasswordResetRequired: False
+      UserName: !Ref UserName
+
+  IAMKey:
+    Type: AWS::IAM::AccessKey
+    DependsOn: IAMUser
+    Properties:
+      Serial: 1
+      Status: Active
+      UserName: !Ref UserName
+
+  IAMUserToGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    DependsOn: IAMUser
+    Properties:
+      GroupName: !Ref GroupName
+      Users:
+        - !Ref UserName
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: IAM Configuration
+        Parameters:
+          - GroupName
+          - UserName
+          - Password
+    ParameterLabels:
+      GroupName:
+        default: "What should the group name be?"
+      UserName:
+        default: "What should the user name be?"
+      Password:
+        default: "What should the password be?"
+
+Outputs:
+  GroupName:
+    Value: !Ref GroupName
+    Description: Name of IAM group created
+  UserName:
+    Value: !Ref UserName
+    Description: Name of IAM user created
+  # not a good idea as it leaves the password visible in the CloudFormation stack Outputs
+  #Password:
+  #  Value: !Ref Password
+  #  Description: Password
+  AccessKey:
+    Value: !Ref IAMKey
+    Description: Access key created
+  # not a good idea as it leaves the password visible in the CloudFormation stack Outputs
+  #SecretAccessKey:
+  #  Value: !GetAtt IAMKey.SecretAccessKey
+  #  Description: Secret access key created

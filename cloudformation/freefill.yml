@@ -20,6 +20,11 @@ Parameters:
     AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-_]+[a-zA-Z0-9]+$"
     Description: Enter the name of the Lambda function
 
+  RoleName:
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-_]+[a-zA-Z0-9]+$"
+    Description: Enter the name of the IAM role
+
   ACMCertIdentifier:
     Type: String
     AllowedPattern: "^[-a-z0-9]+$"
@@ -41,9 +46,8 @@ Resources:
     Properties:
       Description: IAM policy for S3 access
       Roles:
-        # these must match the roles created by Serverless
-        - freefill-serverless-dev-us-east-1-lambdaRole
-#        - freefill-serverless-prod-us-east-1-lambdaRole
+        # matches the role created by Serverless
+        - !Ref RoleName
       PolicyDocument: !Sub '{
         "Version": "2012-10-17",
         "Statement": [
@@ -148,7 +152,7 @@ Resources:
   APIGatewayBasePathMapping:
     Type: 'AWS::ApiGateway::BasePathMapping'
     Properties:
-#      BasePath: / # omitting BasePath results in BasePath:/
+#      BasePath: / # omitting BasePath altogether results in this
       DomainName: !Join ["", [!Ref StageName, ".freefill.com"]]
       RestApiId: !Ref APIGateway
       Stage: !Ref StageName
@@ -165,6 +169,10 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
+          default: IAM Configuration
+        Parameters:
+          - RoleName
+      - Label:
           default: S3 Configuration
         Parameters:
           - BucketName
@@ -178,6 +186,8 @@ Metadata:
         Parameters:
           - LambdaName
     ParameterLabels:
+      RoleName:
+        default: "What is the name of the IAM role created by Serverless?"
       BucketName:
         default: "What should the S3 bucket be called?"
       StageName:
@@ -197,9 +207,6 @@ Outputs:
   IAMPolicy:
     Value: !Ref IAMPolicy
     Description: Name of IAM policy created
-  LambdaName:
-    Value: !Ref LambdaName
-    Description: Name of Lambda function created
   APIGatewayMethod:
     Value: !Ref APIGatewayMethod
     Description: Name of API Gateway created
