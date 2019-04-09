@@ -25,10 +25,6 @@ provider:
 #  stage: prod
   stage: dev
 
-# No longer needed - now handled automatically by CloudFormation template
-#  iamManagedPolicies:
-#    - "arn:aws:iam::916352733218:policy/Freefill-S3-Policy"
-
 # you can overwrite defaults here
 #  stage: dev
 #  region: us-east-1
@@ -65,13 +61,10 @@ provider:
 functions:
   print_page:
     handler: freefill.print_page
-#  print_phil:
-#    handler: freefill.print_phil
-#  print_logo:
-#    handler: freefill.print_logo
-#    awsKmsKeyArn: "arn:aws:kms:us-east-1:916352733218:key/b205c991-091f-41e0-9aa2-283fef5bf396"
     environment:
-      S3_BUCKET: "freefill"
+      S3_BUCKET: freefill-${self:provider.stage} # for properties in serverless.yml
+#      S3_BUCKET: freefill-${opt:provider.stage} # for environment variables
+#      S3_BUCKET: freefill-${env:provider.stage} # for CLI options
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events

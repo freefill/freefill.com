@@ -2,7 +2,6 @@ import boto3
 import time
 import os
 from base64 import b64decode
-#import json
 
 s3 = boto3.resource('s3')
 #s3_bucket_encrypted = os.environ['S3_BUCKET']
@@ -30,5 +29,4 @@ def print_page(event, context):
 	return {
 		'statusCode': 200,
 		'body': data
-#		'body': json.dumps(data)
 	}
